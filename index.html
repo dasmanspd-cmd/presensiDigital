@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Presensi Digital SMAN 1 X KOTO DIATAS</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    .status-btn.active { ring-4 ring-offset-1; transform: scale(1.03); font-weight: 700; }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen">
+
+  <!-- PORTAL LOGIN MODAL -->
+  <div id="loginModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 border border-slate-100">
+      <div class="text-center mb-6">
+        <div class="w-16 h-16 bg-blue-900 text-white rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg shadow-blue-900/30">
+          <i class="fa-solid fa-user-check text-2xl"></i>
+        </div>
+        <h2 class="text-2xl font-bold text-slate-800">Presensi Digital</h2>
+        <p class="text-sm text-slate-500 mt-1">SMAN 1 X KOTO DIATAS</p>
+      </div>
+
+      <form id="loginForm" onsubmit="handleLogin(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold uppercase text-slate-600 mb-1">Password Akses</label>
+          <div class="relative">
+            <input type="password" id="passwordInput" required placeholder="Masukkan password..." 
+              class="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-800 focus:border-transparent outline-none transition pl-10 text-slate-800">
+            <i class="fa-solid fa-lock absolute left-3.5 top-3.5 text-slate-400"></i>
+          </div>
+        </div>
+
+        <div id="loginError" class="hidden p-3 rounded-xl bg-red-50 text-red-600 text-xs font-medium flex items-center gap-2">
+          <i class="fa-solid fa-triangle-exclamation text-sm"></i>
+          <span id="loginErrorText">Password salah!</span>
+        </div>
+
+        <button type="submit" id="btnLogin" 
+          class="w-full py-3 bg-blue-900 hover:bg-blue-800 text-white font-semibold rounded-xl transition shadow-lg shadow-blue-900/20 active:scale-95 flex items-center justify-center gap-2">
+          <span>Masuk ke Aplikasi</span>
+          <i class="fa-solid fa-arrow-right"></i>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- DASHBOARD UTAMA -->
+  <div id="appDashboard" class="hidden min-h-screen flex flex-col">
+    <header class="bg-blue-900 text-white shadow-md sticky top-0 z-30">
+      <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center backdrop-blur-md">
+            <i class="fa-solid fa-graduation-cap text-lg"></i>
+          </div>
+          <div>
+            <h1 class="font-bold text-base md:text-lg leading-tight">Presensi Digital Guru</h1>
+            <p class="text-xs text-blue-200" id="teacherInfo">DASMAN, S.Pd | SMAN 1 X KOTO DIATAS</p>
+          </div>
+        </div>
+        <button onclick="logout()" class="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-lg transition flex items-center gap-1.5">
+          <i class="fa-solid fa-right-from-bracket"></i>
+          <span class="hidden md:inline">Keluar</span>
+        </button>
+      </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 py-6 flex-1 w-full space-y-6">
+      
+      <!-- Panel Filter Presensi -->
+      <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+          <h2 class="text-sm font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+            <i class="fa-solid fa-sliders text-blue-800"></i>
+            <span>Filter & Parameter Presensi</span>
+          </h2>
+          
+          <div class="flex items-center gap-2">
+            <button onclick="openImportExcelModal()" class="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold rounded-xl transition flex items-center gap-1.5 shadow-sm">
+              <i class="fa-solid fa-file-excel"></i>
+              <span>Impor Excel</span>
+            </button>
+
+            <button onclick="openAddStudentModal()" class="px-3 py-1.5 bg-blue-900 hover:bg-blue-800 text-white text-xs font-semibold rounded-xl transition flex items-center gap-1.5 shadow-sm">
+              <i class="fa-solid fa-user-plus"></i>
+              <span>Tambah Siswa</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">Tanggal Hari Ini</label>
+            <input type="date" id="inputDate" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-800 outline-none text-sm bg-slate-50">
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">Pilih Kelas</label>
+            <select id="selectClass" onchange="loadStudents()" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-800 outline-none text-sm bg-white font-medium text-slate-700">
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">Pertemuan Ke-</label>
+            <select id="selectMeeting" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-800 outline-none text-sm bg-white font-medium text-slate-700">
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <!-- Panel Pencarian & Kontrol Massal -->
+      <section class="flex flex-wrap items-center justify-between gap-3 bg-slate-200/60 p-3 rounded-2xl border border-slate-300/60">
+        <div class="flex items-center gap-2 flex-1 max-w-md">
+          <!-- KOTAK PENCARIAN SISWA REAL-TIME -->
+          <div class="relative w-full">
+            <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
+            <input type="text" id="searchInput" oninput="filterStudents()" placeholder="Cari nama atau NIS siswa..." 
+              class="w-full pl-8 pr-8 py-1.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-blue-800 focus:border-transparent outline-none bg-white">
+            <button id="btnClearSearch" onclick="clearSearch()" class="hidden absolute right-2.5 top-2 text-slate-400 hover:text-slate-600 text-xs">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+
+          <button onclick="setAllStatus('H')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-xl transition shadow-sm flex items-center gap-1.5 active:scale-95 whitespace-nowrap">
+            <i class="fa-solid fa-check-double"></i>
+            <span class="hidden sm:inline">Set Semua Hadir (H)</span>
+            <span class="sm:hidden">Semua H</span>
+          </button>
+        </div>
+
+        <div class="text-xs text-slate-600 font-medium">
+          Menampilkan: <span id="studentCount" class="font-bold text-blue-900">0</span> Orang
+        </div>
+      </section>
+
+      <!-- Grid Kartu Siswa -->
+      <section id="studentContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      </section>
+
+      <!-- Tombol Simpan Presensi -->
+      <div class="sticky bottom-4 z-20 flex justify-center">
+        <button id="btnSave" onclick="saveAttendance()" class="px-8 py-3.5 bg-blue-900 hover:bg-blue-800 text-white font-bold rounded-full shadow-2xl hover:shadow-blue-900/40 transition transform active:scale-95 flex items-center gap-2">
+          <i class="fa-solid fa-floppy-disk text-lg"></i>
+          <span>Simpan Presensi Ke Google Sheets</span>
+        </button>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- MODAL FORM IMPOR SISWA EXCEL -->
+  <div id="importExcelModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 backdrop-blur-sm p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 border border-slate-100">
+      <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+        <h3 class="font-bold text-slate-800 flex items-center gap-2">
+          <i class="fa-solid fa-file-excel text-emerald-700 text-lg"></i>
+          <span>Impor Data Siswa dari Excel</span>
+        </h3>
+        <button onclick="closeImportExcelModal()" class="text-slate-400 hover:text-slate-600 text-lg">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <form id="importExcelForm" onsubmit="handleImportExcel(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Target Kelas</label>
+          <select id="importExcelClass" required class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm bg-slate-50 focus:ring-2 focus:ring-blue-800 outline-none">
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Pilih File Excel (.xlsx / .xls / .csv)</label>
+          <input type="file" id="excelFileInput" accept=".xlsx, .xls, .csv" required class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-slate-50 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-100 file:text-emerald-800 hover:file:bg-emerald-200">
+        </div>
+
+        <div class="p-3 bg-slate-50 rounded-xl border border-slate-200/80 text-[11px] text-slate-600 space-y-1">
+          <p class="font-bold text-slate-700"><i class="fa-solid fa-circle-info text-blue-800 mr-1"></i>Format Kolom Excel yang Didukung:</p>
+          <p>Baris pertama harus berisi nama header kolom:</p>
+          <ul class="list-disc list-inside text-slate-500 pl-1 space-y-0.5">
+            <li><span class="font-semibold text-slate-700">NIS / NISN</span></li>
+            <li><span class="font-semibold text-slate-700">NAMA / NAMA SISWA</span></li>
+            <li><span class="font-semibold text-slate-700">JK / L/P / GENDER</span> (L atau P)</li>
+          </ul>
+        </div>
+
+        <div id="previewContainer" class="hidden max-h-40 overflow-y-auto rounded-xl border border-slate-200 p-2 text-xs bg-white">
+          <div class="font-bold text-slate-700 mb-1">Pratinjau Siswa (<span id="previewCount">0</span> Siswa):</div>
+          <ol id="previewList" class="list-decimal list-inside space-y-0.5 text-slate-600">
+          </ol>
+        </div>
+
+        <div class="pt-2 flex gap-2">
+          <button type="button" onclick="closeImportExcelModal()" class="w-1/2 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl transition">Batal</button>
+          <button type="submit" id="btnImportSubmit" class="w-1/2 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs rounded-xl transition shadow-md shadow-emerald-700/20">Mulai Impor</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL FORM TAMBAH SISWA MANUAL -->
+  <div id="addStudentModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 backdrop-blur-sm p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 border border-slate-100">
+      <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+        <h3 class="font-bold text-slate-800 flex items-center gap-2">
+          <i class="fa-solid fa-user-plus text-blue-900"></i>
+          <span>Tambah Siswa Baru</span>
+        </h3>
+        <button onclick="closeAddStudentModal()" class="text-slate-400 hover:text-slate-600 text-lg">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <form id="addStudentForm" onsubmit="handleAddStudent(event)" class="space-y-3">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Target Kelas</label>
+          <select id="addStudentClass" required class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm bg-slate-50 focus:ring-2 focus:ring-blue-800 outline-none">
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">NIS / NISN</label>
+          <input type="text" id="addStudentNis" required placeholder="Contoh: 1011" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-800 outline-none">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Nama Lengkap Siswa</label>
+          <input type="text" id="addStudentName" required placeholder="Contoh: Muhammad Budi" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-800 outline-none">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Jenis Kelamin</label>
+          <select id="addStudentGender" required class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-800 outline-none">
+            <option value="L">Laki-laki (L)</option>
+            <option value="P">Perempuan (P)</option>
+          </select>
+        </div>
+
+        <div class="pt-3 flex gap-2">
+          <button type="button" onclick="closeAddStudentModal()" class="w-1/2 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl transition">Batal</button>
+          <button type="submit" id="btnAddStudentSubmit" class="w-1/2 py-2.5 bg-blue-900 hover:bg-blue-800 text-white font-semibold text-xs rounded-xl transition shadow-md">Simpan Siswa</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL KONFIRMASI HAPUS SISWA -->
+  <div id="deleteStudentModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 backdrop-blur-sm p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 text-center border border-slate-100">
+      <div class="w-14 h-14 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
+        <i class="fa-solid fa-trash-can text-2xl"></i>
+      </div>
+      <h3 class="font-bold text-slate-800 text-lg mb-1">Hapus Data Siswa?</h3>
+      <p class="text-xs text-slate-500 mb-5">
+        Apakah Anda yakin ingin menghapus <span id="deleteStudentNameText" class="font-bold text-slate-800"></span> dari <span id="deleteStudentClassText" class="font-bold text-slate-800"></span>?
+      </p>
+
+      <div class="flex gap-2">
+        <button onclick="closeDeleteStudentModal()" class="w-1/2 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl transition">Batal</button>
+        <button id="btnConfirmDelete" onclick="confirmDeleteStudent()" class="w-1/2 py-2.5 bg-red-600 hover:bg-red-700 text-white font-semibold text-xs rounded-xl transition shadow-md shadow-red-600/20">Ya, Hapus</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="fixed top-5 right-5 z-50 transform translate-x-full transition duration-300 bg-emerald-600 text-white px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3">
+    <i class="fa-solid fa-circle-check text-xl"></i>
+    <span id="toastMessage" class="text-sm font-medium">Presensi berhasil disimpan!</span>
+  </div>
+
+  <script>
+    let appConfig = null;
+    let currentStudents = [];
+    let pendingDeleteStudent = null;
+    let parsedImportData = [];
+
+    document.getElementById('inputDate').valueAsDate = new Date();
+
+    function handleLogin(e) {
+      e.preventDefault();
+      const pwd = document.getElementById('passwordInput').value;
+      const btn = document.getElementById('btnLogin');
+      const err = document.getElementById('loginError');
+
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-circle-notch animate-spin"></i> Memeriksa...`;
+      err.classList.add('hidden');
+
+      google.script.run
+        .withSuccessHandler((res) => {
+          btn.disabled = false;
+          btn.innerHTML = `<span>Masuk ke Aplikasi</span> <i class="fa-solid fa-arrow-right"></i>`;
+          
+          if (res.success) {
+            appConfig = res;
+            document.getElementById('loginModal').classList.add('hidden');
+            document.getElementById('appDashboard').classList.remove('hidden');
+            document.getElementById('teacherInfo').innerText = `${res.teacher} | ${res.school}`;
+            
+            initFilters(res.classes, res.totalMeetings);
+          } else {
+            err.classList.remove('hidden');
+            document.getElementById('loginErrorText').innerText = res.message;
+          }
+        })
+        .verifyPassword(pwd);
+    }
+
+    function initFilters(classes, totalMeetings) {
+      const classSelect = document.getElementById('selectClass');
+      classSelect.innerHTML = classes.map(c => `<option value="${c}">${c}</option>`).join('');
+
+      const addClassSelect = document.getElementById('addStudentClass');
+      addClassSelect.innerHTML = classes.map(c => `<option value="${c}">${c}</option>`).join('');
+
+      const importClassSelect = document.getElementById('importExcelClass');
+      importClassSelect.innerHTML = classes.map(c => `<option value="${c}">${c}</option>`).join('');
+
+      const meetingSelect = document.getElementById('selectMeeting');
+      let meetingOptions = '';
+      for (let i = 1; i <= totalMeetings; i++) {
+        meetingOptions += `<option value="${i}">Pertemuan ${i}</option>`;
+      }
+      meetingSelect.innerHTML = meetingOptions;
+
+      loadStudents();
+    }
+
+    function loadStudents() {
+      const className = document.getElementById('selectClass').value;
+      const container = document.getElementById('studentContainer');
+      document.getElementById('searchInput').value = '';
+      document.getElementById('btnClearSearch').classList.add('hidden');
+      
+      container.innerHTML = `
+        <div class="col-span-full py-12 text-center text-slate-400">
+          <i class="fa-solid fa-circle-notch animate-spin text-3xl mb-2 text-blue-900"></i>
+          <p class="text-sm font-medium">Memuat data siswa ${className}...</p>
+        </div>
+      `;
+
+      google.script.run
+        .withSuccessHandler((students) => {
+          currentStudents = students.map(s => ({ ...s, status: 'H' }));
+          document.getElementById('studentCount').innerText = students.length;
+          renderStudents(currentStudents);
+        })
+        .getClassData(className);
+    }
+
+    // FUNGSI PENCARIAN SISWA REAL-TIME
+    function filterStudents() {
+      const query = document.getElementById('searchInput').value.toLowerCase().trim();
+      const btnClear = document.getElementById('btnClearSearch');
+
+      if (query.length > 0) {
+        btnClear.classList.remove('hidden');
+      } else {
+        btnClear.classList.add('hidden');
+      }
+
+      const filtered = currentStudents.filter(st => 
+        st.name.toLowerCase().includes(query) || 
+        String(st.nis).toLowerCase().includes(query)
+      );
+
+      document.getElementById('studentCount').innerText = filtered.length;
+      renderStudents(filtered);
+    }
+
+    function clearSearch() {
+      document.getElementById('searchInput').value = '';
+      document.getElementById('btnClearSearch').classList.add('hidden');
+      document.getElementById('studentCount').innerText = currentStudents.length;
+      renderStudents(currentStudents);
+    }
+
+    function renderStudents(studentsToRender) {
+      const container = document.getElementById('studentContainer');
+      const list = studentsToRender || currentStudents;
+
+      if (list.length === 0) {
+        container.innerHTML = `<div class="col-span-full text-center py-8 text-slate-400">Tidak ada data siswa yang cocok dengan pencarian.</div>`;
+        return;
+      }
+
+      container.innerHTML = list.map((st) => {
+        const originalIndex = currentStudents.findIndex(s => s.row === st.row);
+        const hasWarning = parseInt(st.alfa) > 0 || parseInt(st.cabut) > 0;
+        const warningBorder = hasWarning ? 'border-red-400 bg-red-50/30' : 'border-slate-200 bg-white';
+
+        return `
+          <div class="rounded-2xl border ${warningBorder} shadow-sm p-4 flex flex-col justify-between transition hover:shadow-md relative">
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-bold text-slate-400">#${st.no}</span>
+                <div class="flex items-center gap-1.5">
+                  <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${st.gender === 'L' ? 'bg-blue-100 text-blue-700' : 'bg-pink-100 text-pink-700'}">
+                    ${st.gender === 'L' ? 'Laki-laki' : 'Perempuan'}
+                  </span>
+                  <button onclick="openDeleteModal(${originalIndex})" class="w-6 h-6 rounded-lg bg-red-50 text-red-500 hover:bg-red-600 hover:text-white transition flex items-center justify-center text-xs ml-1" title="Hapus Siswa">
+                    <i class="fa-solid fa-trash"></i>
+                  </button>
+                </div>
+              </div>
+
+              <h3 class="font-bold text-slate-800 text-base leading-snug">${st.name}</h3>
+              <p class="text-xs text-slate-400 mt-0.5 mb-3">NIS/NISN: ${st.nis}</p>
+
+              <div class="grid grid-cols-3 gap-1.5 p-2 bg-slate-50 rounded-xl mb-4 text-center border border-slate-100">
+                <div>
+                  <div class="text-[10px] text-slate-400 font-medium">Total Alfa</div>
+                  <div class="text-xs font-bold ${parseInt(st.alfa) > 0 ? 'text-red-600' : 'text-slate-700'}">${st.alfa}</div>
+                </div>
+                <div>
+                  <div class="text-[10px] text-slate-400 font-medium">Total Cabut</div>
+                  <div class="text-xs font-bold ${parseInt(st.cabut) > 0 ? 'text-amber-600' : 'text-slate-700'}">${st.cabut}</div>
+                </div>
+                <div>
+                  <div class="text-[10px] text-slate-400 font-medium">% Hadir</div>
+                  <div class="text-xs font-bold text-blue-900">${st.pct}</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-5 gap-1 pt-2 border-t border-slate-100">
+              ${['H', 'S', 'I', 'A', 'C'].map(status => {
+                const isActive = st.status === status;
+                const colors = {
+                  'H': isActive ? 'bg-emerald-600 text-white ring-emerald-300' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100',
+                  'S': isActive ? 'bg-blue-600 text-white ring-blue-300' : 'bg-blue-50 text-blue-700 hover:bg-blue-100',
+                  'I': isActive ? 'bg-amber-500 text-white ring-amber-200' : 'bg-amber-50 text-amber-700 hover:bg-amber-100',
+                  'A': isActive ? 'bg-red-600 text-white ring-red-300' : 'bg-red-50 text-red-700 hover:bg-red-100',
+                  'C': isActive ? 'bg-purple-600 text-white ring-purple-300' : 'bg-purple-50 text-purple-700 hover:bg-purple-100'
+                };
+                return `
+                  <button type="button" onclick="setStatus(${originalIndex}, '${status}')" 
+                    class="py-2 text-xs font-bold rounded-lg transition status-btn ${colors[status]}${isActive ? 'active' : ''}">
+                    ${status}
+                  </button>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function setStatus(index, status) {
+      currentStudents[index].status = status;
+      filterStudents();
+    }
+
+    function setAllStatus(status) {
+      currentStudents.forEach(st => st.status = status);
+      filterStudents();
+    }
+
+    function saveAttendance() {
+      const btn = document.getElementById('btnSave');
+      const payload = {
+        className: document.getElementById('selectClass').value,
+        meetingIndex: document.getElementById('selectMeeting').value,
+        dateStr: document.getElementById('inputDate').value,
+        attendanceData: currentStudents.map(s => ({ row: s.row, status: s.status }))
+      };
+
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-circle-notch animate-spin"></i> Menyimpan...`;
+
+      google.script.run
+        .withSuccessHandler((res) => {
+          btn.disabled = false;
+          btn.innerHTML = `<i class="fa-solid fa-floppy-disk text-lg"></i> <span>Simpan Presensi Ke Google Sheets</span>`;
+          
+          playSuccessSound();
+          showToast(res.message);
+          loadStudents();
+        })
+        .saveAttendance(payload);
+    }
+
+    function openImportExcelModal() {
+      const currentClass = document.getElementById('selectClass').value;
+      document.getElementById('importExcelClass').value = currentClass;
+      document.getElementById('importExcelModal').classList.remove('hidden');
+    }
+
+    function closeImportExcelModal() {
+      document.getElementById('importExcelModal').classList.add('hidden');
+      document.getElementById('importExcelForm').reset();
+      document.getElementById('previewContainer').classList.add('hidden');
+      parsedImportData = [];
+    }
+
+    document.getElementById('excelFileInput').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        try {
+          const data = new Uint8Array(evt.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          const json = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+
+          parsedImportData = [];
+          json.forEach(row => {
+            let nis = '', name = '', gender = 'L';
+            
+            Object.keys(row).forEach(key => {
+              const k = key.trim().toUpperCase();
+              if (k.includes('NIS')) nis = row[key];
+              else if (k.includes('NAMA')) name = row[key];
+              else if (k.includes('JK') || k.includes('L/P') || k.includes('GENDER') || k.includes('KELAMIN')) gender = row[key];
+            });
+
+            if (name) {
+              parsedImportData.push({ nis, name, gender });
+            }
+          });
+
+          if (parsedImportData.length > 0) {
+            document.getElementById('previewCount').innerText = parsedImportData.length;
+            const previewList = document.getElementById('previewList');
+            previewList.innerHTML = parsedImportData.slice(0, 10).map(s => 
+              `<li>${s.name} (NIS: ${s.nis || '-'}, ${s.gender})</li>`
+            ).join('');
+            
+            if (parsedImportData.length > 10) {
+              previewList.innerHTML += `<li class="italic text-slate-400">...dan ${parsedImportData.length - 10} siswa lainnya</li>`;
+            }
+
+            document.getElementById('previewContainer').classList.remove('hidden');
+          } else {
+            alert("Tidak dapat menemukan kolom 'NAMA' atau data siswa dalam file Excel tersebut.");
+            document.getElementById('previewContainer').classList.add('hidden');
+          }
+        } catch (err) {
+          alert("Gagal membaca file Excel: " + err.message);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    });
+
+    function handleImportExcel(e) {
+      e.preventDefault();
+      if (parsedImportData.length === 0) {
+        alert("Pilih file Excel yang valid terlebih dahulu.");
+        return;
+      }
+
+      const btn = document.getElementById('btnImportSubmit');
+      const targetClass = document.getElementById('importExcelClass').value;
+      const payload = {
+        className: targetClass,
+        studentList: parsedImportData
+      };
+
+      btn.disabled = true;
+      btn.innerText = "MENGIMPOR...";
+
+      google.script.run
+        .withSuccessHandler((res) => {
+          btn.disabled = false;
+          btn.innerText = "MULAI IMPOR";
+          closeImportExcelModal();
+          showToast(res.message);
+          
+          if (targetClass === document.getElementById('selectClass').value) {
+            loadStudents();
+          }
+        })
+        .withFailureHandler((err) => {
+          btn.disabled = false;
+          btn.innerText = "MULAI IMPOR";
+          alert("Gagal mengimpor siswa: " + err.message);
+        })
+        .importStudentsBulk(payload);
+    }
+
+    function openAddStudentModal() {
+      const currentClass = document.getElementById('selectClass').value;
+      document.getElementById('addStudentClass').value = currentClass;
+      document.getElementById('addStudentModal').classList.remove('hidden');
+    }
+
+    function closeAddStudentModal() {
+      document.getElementById('addStudentModal').classList.add('hidden');
+      document.getElementById('addStudentForm').reset();
+    }
+
+    function handleAddStudent(e) {
+      e.preventDefault();
+      const btn = document.getElementById('btnAddStudentSubmit');
+      const payload = {
+        className: document.getElementById('addStudentClass').value,
+        nis: document.getElementById('addStudentNis').value,
+        name: document.getElementById('addStudentName').value,
+        gender: document.getElementById('addStudentGender').value
+      };
+
+      btn.disabled = true;
+      btn.innerText = "Menyimpan...";
+
+      google.script.run
+        .withSuccessHandler((res) => {
+          btn.disabled = false;
+          btn.innerText = "Simpan Siswa";
+          closeAddStudentModal();
+          showToast(res.message);
+          
+          if (payload.className === document.getElementById('selectClass').value) {
+            loadStudents();
+          }
+        })
+        .withFailureHandler((err) => {
+          btn.disabled = false;
+          btn.innerText = "Simpan Siswa";
+          alert("Gagal menambahkan siswa: " + err.message);
+        })
+        .addStudent(payload);
+    }
+
+    function openDeleteModal(index) {
+      pendingDeleteStudent = currentStudents[index];
+      const currentClass = document.getElementById('selectClass').value;
+      
+      document.getElementById('deleteStudentNameText').innerText = pendingDeleteStudent.name;
+      document.getElementById('deleteStudentClassText').innerText = currentClass;
+      document.getElementById('deleteStudentModal').classList.remove('hidden');
+    }
+
+    function closeDeleteStudentModal() {
+      pendingDeleteStudent = null;
+      document.getElementById('deleteStudentModal').classList.add('hidden');
+    }
+
+    function confirmDeleteStudent() {
+      if (!pendingDeleteStudent) return;
+      
+      const btn = document.getElementById('btnConfirmDelete');
+      const currentClass = document.getElementById('selectClass').value;
+      const payload = {
+        className: currentClass,
+        row: pendingDeleteStudent.row,
+        name: pendingDeleteStudent.name
+      };
+
+      btn.disabled = true;
+      btn.innerText = "MENGHAPUS...";
+
+      google.script.run
+        .withSuccessHandler((res) => {
+          btn.disabled = false;
+          btn.innerText = "YA, HAPUS";
+          closeDeleteStudentModal();
+          showToast(res.message);
+          loadStudents();
+        })
+        .withFailureHandler((err) => {
+          btn.disabled = false;
+          btn.innerText = "YA, HAPUS";
+          alert("Gagal menghapus siswa: " + err.message);
+        })
+        .deleteStudent(payload);
+    }
+
+    function playSuccessSound() {
+      try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(587.33, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.2);
+
+        gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.5);
+      } catch (e) {
+        console.log("Audio not supported");
+      }
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      document.getElementById('toastMessage').innerText = msg;
+      toast.classList.remove('translate-x-full');
+      setTimeout(() => {
+        toast.classList.add('translate-x-full');
+      }, 3500);
+    }
+
+    function logout() {
+      document.getElementById('appDashboard').classList.add('hidden');
+      document.getElementById('loginModal').classList.remove('hidden');
+      document.getElementById('passwordInput').value = '';
+    }
+  </script>
+</body>
+</html>
